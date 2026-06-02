@@ -55,7 +55,17 @@
     .settings {
       background: #fff;
       border-bottom: 2px solid #ddd;
-      padding: 12px 16px;
+    }
+    .settings > summary {
+      padding: 10px 16px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9rem;
+      color: #2c3e50;
+      user-select: none;
+    }
+    .settings-body {
+      padding: 8px 16px 14px;
       display: flex;
       flex-wrap: wrap;
       gap: 12px 20px;
@@ -170,7 +180,6 @@
       opacity: 0;
       border: none;
       padding: 0;
-      pointer-events: none;
     }
 
     /* 円形ウォッチ本体 */
@@ -231,40 +240,43 @@
   </div>
 </details>
 
-<section class="settings">
-  <div class="setting-item">
-    <label for="input-count">ストップウォッチ数</label>
-    <input type="number" id="input-count" min="1" max="20" value="4">
-  </div>
-
-  <div class="setting-item">
-    <label for="input-size">サイズ (px)</label>
-    <input type="number" id="input-size" min="10" max="1000" value="160">
-  </div>
-
-  <div class="setting-item">
-    <label>配置の流れ</label>
-    <div class="radio-group">
-      <label><input type="radio" name="direction" value="horizontal" checked> 横方向優先</label>
-      <label><input type="radio" name="direction" value="vertical"> 縦方向優先</label>
+<details class="settings" open>
+  <summary>設定</summary>
+  <div class="settings-body">
+    <div class="setting-item">
+      <label for="input-count">ストップウォッチ数</label>
+      <input type="number" id="input-count" min="1" max="20" value="4">
     </div>
-  </div>
 
-  <div class="setting-item">
-    <label for="input-wrap">折り返し数</label>
-    <input type="number" id="input-wrap" min="1" max="10" value="2">
-  </div>
-
-  <div class="setting-item">
-    <label>動作モード</label>
-    <div class="radio-group">
-      <label><input type="radio" name="mode" value="switch" checked> 切り替えモード</label>
-      <label><input type="radio" name="mode" value="concurrent"> 同時実行モード</label>
+    <div class="setting-item">
+      <label for="input-size">サイズ (px)</label>
+      <input type="number" id="input-size" min="10" max="1000" value="160">
     </div>
-  </div>
 
-  <button class="btn-reset" id="btn-reset">リセット</button>
-</section>
+    <div class="setting-item">
+      <label>配置の流れ</label>
+      <div class="radio-group">
+        <label><input type="radio" name="direction" value="horizontal" checked> 横方向優先</label>
+        <label><input type="radio" name="direction" value="vertical"> 縦方向優先</label>
+      </div>
+    </div>
+
+    <div class="setting-item">
+      <label for="input-wrap">折り返し数</label>
+      <input type="number" id="input-wrap" min="1" max="10" value="2">
+    </div>
+
+    <div class="setting-item">
+      <label>動作モード</label>
+      <div class="radio-group">
+        <label><input type="radio" name="mode" value="switch" checked> 切り替えモード</label>
+        <label><input type="radio" name="mode" value="concurrent"> 同時実行モード</label>
+      </div>
+    </div>
+
+    <button class="btn-reset" id="btn-reset">リセット</button>
+  </div>
+</details>
 
 <div id="sw-container">
   <div class="sw-grid" id="sw-grid"></div>
@@ -475,7 +487,9 @@ function rebuildDom() {
     const colorBtn = document.createElement("button");
     colorBtn.className = "sw-color-btn";
     colorBtn.title = "色を変更";
-    colorBtn.addEventListener("click", () => colorInput.click());
+    colorBtn.addEventListener("keydown", e => {
+      if (e.key === " ") { e.preventDefault(); colorInput.click(); }
+    });
     const colorInput = document.createElement("input");
     colorInput.type = "color";
     colorInput.tabIndex = -1;
