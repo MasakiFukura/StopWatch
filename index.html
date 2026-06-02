@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>汎用マルチストップウォッチ</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== ヘッダー・説明 ===== */
+    .page-header {
+      background: #2c3e50;
+      color: #fff;
+      padding: 20px 16px 16px;
+    }
+    .page-header h1 { font-size: 1.4rem; margin-bottom: 8px; }
+    .page-header p  { font-size: 0.85rem; line-height: 1.6; opacity: 0.9; }
+
+    details.how-to-use {
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+      padding: 0 16px;
+    }
+    details.how-to-use summary {
+      padding: 10px 0;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9rem;
+      color: #2c3e50;
+      user-select: none;
+    }
+    details.how-to-use .content {
+      padding: 8px 0 14px;
+      font-size: 0.85rem;
+      line-height: 1.7;
+      color: #555;
+    }
+    details.how-to-use .content ul { padding-left: 18px; margin-top: 4px; }
+    details.how-to-use .content li { margin-bottom: 4px; }
+
+    /* ===== 設定エリア ===== */
+    .settings {
+      background: #fff;
+      border-bottom: 2px solid #ddd;
+      padding: 12px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 20px;
+      align-items: flex-end;
+    }
+
+    .setting-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .setting-item label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #555;
+      white-space: nowrap;
+    }
+    .setting-item input[type="number"] {
+      width: 80px;
+      padding: 5px 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    .setting-item .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .setting-item .radio-group label {
+      font-size: 0.8rem;
+      font-weight: normal;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
+
+    .btn-reset {
+      padding: 8px 18px;
+      background: #e74c3c;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      align-self: flex-end;
+      transition: background 0.15s;
+    }
+    .btn-reset:hover { background: #c0392b; }
+
+    /* ===== ストップウォッチ一覧 ===== */
+    #sw-container {
+      padding: 16px;
+      overflow: auto;
+      flex: 1;
+      min-height: 0;
+    }
+    .sw-grid {
+      display: inline-grid;
+      gap: 20px;
+    }
+
+    /* ===== 個別ストップウォッチ ===== */
+    .sw-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sw-top {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      justify-content: center;
+    }
+    .sw-name {
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 0.8rem;
+      text-align: center;
+      min-width: 0;
+      flex: 1;
+      max-width: 130px;
+    }
+    .sw-color-btn {
+      width: 26px;
+      height: 26px;
+      border: 2px solid #bbb;
+      border-radius: 50%;
+      cursor: pointer;
+      padding: 0;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .sw-color-btn:focus {
+      outline: 2px solid #3498db;
+      outline-offset: 2px;
+    }
+    .sw-color-btn input[type="color"] {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      border: none;
+      padding: 0;
+      pointer-events: none;
+    }
+
+    /* 円形ウォッチ本体 */
+    .sw-circle {
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      user-select: none;
+      transition: box-shadow 0.15s, filter 0.15s;
+      border: 4px solid transparent;
+      position: relative;
+    }
+    .sw-circle:hover { filter: brightness(0.93); }
+    .sw-circle.running {
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.6), 0 0 14px 6px rgba(0,0,0,0.25);
+      animation: pulse 1s ease-in-out infinite alternate;
+    }
+    @keyframes pulse {
+      from { box-shadow: 0 0 0 4px rgba(255,255,255,0.6), 0 0 10px 4px rgba(0,0,0,0.2); }
+      to   { box-shadow: 0 0 0 4px rgba(255,255,255,0.9), 0 0 20px 10px rgba(0,0,0,0.3); }
+    }
+
+    .sw-time {
+      font-variant-numeric: tabular-nums;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      line-height: 1;
+    }
+    .sw-status {
+      font-size: 0.7em;
+      color: rgba(255,255,255,0.8);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>汎用マルチストップウォッチ</h1>
+  <p>複数のストップウォッチを同時に管理できます。スマホ・PCどちらでもご利用いただけます。</p>
+</header>
+
+<details class="how-to-use">
+  <summary>使い方</summary>
+  <div class="content">
+    <ul>
+      <li><strong>円をタップ／クリック</strong>でストップウォッチを開始／停止します。</li>
+      <li><strong>切り替えモード</strong>：1つだけ動かすモードです。別のウォッチを押すと現在動いているものが止まります。</li>
+      <li><strong>同時実行モード</strong>：複数のウォッチを同時に動かせます。</li>
+      <li><strong>名称欄</strong>を編集してウォッチに名前を付けられます。</li>
+      <li><strong>色ボタン（丸）</strong>を押すとウォッチの色を変更できます。</li>
+      <li><strong>リセット</strong>ボタンで全ウォッチを停止・時間をゼロに戻します（名称・設定は保持）。</li>
+    </ul>
+  </div>
+</details>
+
+<section class="settings">
+  <div class="setting-item">
+    <label for="input-count">ストップウォッチ数</label>
+    <input type="number" id="input-count" min="1" max="20" value="4">
+  </div>
+
+  <div class="setting-item">
+    <label for="input-size">サイズ (px)</label>
+    <input type="number" id="input-size" min="10" max="1000" value="160">
+  </div>
+
+  <div class="setting-item">
+    <label>配置の流れ</label>
+    <div class="radio-group">
+      <label><input type="radio" name="direction" value="horizontal" checked> 横方向優先</label>
+      <label><input type="radio" name="direction" value="vertical"> 縦方向優先</label>
+    </div>
+  </div>
+
+  <div class="setting-item">
+    <label for="input-wrap">折り返し数</label>
+    <input type="number" id="input-wrap" min="1" max="10" value="2">
+  </div>
+
+  <div class="setting-item">
+    <label>動作モード</label>
+    <div class="radio-group">
+      <label><input type="radio" name="mode" value="switch" checked> 切り替えモード</label>
+      <label><input type="radio" name="mode" value="concurrent"> 同時実行モード</label>
+    </div>
+  </div>
+
+  <button class="btn-reset" id="btn-reset">リセット</button>
+</section>
+
+<div id="sw-container">
+  <div class="sw-grid" id="sw-grid"></div>
+</div>
+
+<script>
+"use strict";
+
+/** @typedef {{ name: string, color: string, startTime: number|null, elapsed: number, running: boolean }} SwState */
+
+/** @type {SwState[]} */
+let stopwatches = [];
+
+const DEFAULT_COLORS = [
+  "#3498db","#e74c3c","#2ecc71","#e67e22",
+  "#9b59b6","#1abc9c","#f39c12","#34495e",
+  "#e91e63","#00bcd4","#8bc34a","#ff5722",
+  "#607d8b","#795548","#ff9800","#673ab7",
+  "#009688","#f44336","#4caf50","#2196f3"
+];
+
+let intervalId = null;
+
+/** @returns {number} ストップウォッチ数 */
+function getCount()     { return clamp(parseInt(document.getElementById("input-count").value) || 4, 1, 20); }
+/** @returns {number} サイズ(px) */
+function getSize()      { return clamp(parseInt(document.getElementById("input-size").value) || 160, 10, 1000); }
+/** @returns {number} 折り返し数 */
+function getWrap()      { return clamp(parseInt(document.getElementById("input-wrap").value) || 2, 1, 10); }
+/** @returns {'horizontal'|'vertical'} 配置方向 */
+function getDirection() { return document.querySelector('input[name="direction"]:checked').value; }
+/** @returns {'switch'|'concurrent'} 動作モード */
+function getMode()      { return document.querySelector('input[name="mode"]:checked').value; }
+
+/**
+ * 数値をmin〜maxにクランプする
+ * @param {number} v
+ * @param {number} min
+ * @param {number} max
+ * @returns {number}
+ */
+function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
+
+/**
+ * ミリ秒を mm:ss.x または hh:mm:ss.x 形式に変換する
+ * @param {number} ms
+ * @returns {string}
+ */
+function formatTime(ms) {
+  const totalTenths = Math.floor(ms / 100);
+  const tenths = totalTenths % 10;
+  const totalSec = Math.floor(ms / 1000);
+  const sec = totalSec % 60;
+  const totalMin = Math.floor(totalSec / 60);
+  const min = totalMin % 60;
+  const hour = Math.floor(totalMin / 60);
+
+  const ss = String(sec).padStart(2, "0");
+  const mm = String(min).padStart(2, "0");
+
+  if (hour > 0) {
+    const hh = String(hour).padStart(2, "0");
+    return `${hh}:${mm}:${ss}.${tenths}`;
+  }
+  return `${mm}:${ss}.${tenths}`;
+}
+
+/**
+ * 現在の経過ミリ秒を返す
+ * @param {SwState} sw
+ * @returns {number}
+ */
+function currentElapsed(sw) {
+  if (sw.running && sw.startTime !== null) {
+    return sw.elapsed + (Date.now() - sw.startTime);
+  }
+  return sw.elapsed;
+}
+
+/**
+ * ストップウォッチを開始する
+ * @param {SwState} sw
+ */
+function startSw(sw) {
+  if (sw.running) return;
+  sw.startTime = Date.now();
+  sw.running = true;
+}
+
+/**
+ * ストップウォッチを停止する
+ * @param {SwState} sw
+ */
+function stopSw(sw) {
+  if (!sw.running) return;
+  sw.elapsed += Date.now() - sw.startTime;
+  sw.startTime = null;
+  sw.running = false;
+}
+
+/**
+ * ストップウォッチをリセットする（名称・色は保持）
+ * @param {SwState} sw
+ */
+function resetSw(sw) {
+  sw.running = false;
+  sw.startTime = null;
+  sw.elapsed = 0;
+}
+
+/**
+ * index番目のストップウォッチがクリックされたときの処理
+ * @param {number} index
+ */
+function handleSwClick(index) {
+  const sw = stopwatches[index];
+  const mode = getMode();
+
+  if (mode === "switch") {
+    if (sw.running) {
+      stopSw(sw);
+    } else {
+      stopwatches.forEach((s, i) => { if (i !== index) stopSw(s); });
+      startSw(sw);
+    }
+  } else {
+    if (sw.running) stopSw(sw); else startSw(sw);
+  }
+  updateDisplay();
+}
+
+/**
+ * ストップウォッチ配列を指定数に合わせて追加・削除する
+ * @param {number} count
+ */
+function resizeStopwatches(count) {
+  while (stopwatches.length < count) {
+    const i = stopwatches.length + 1;
+    stopwatches.push({
+      name: `ストップウォッチ${i}`,
+      color: DEFAULT_COLORS[(i - 1) % DEFAULT_COLORS.length],
+      startTime: null,
+      elapsed: 0,
+      running: false
+    });
+  }
+  if (stopwatches.length > count) {
+    stopwatches.slice(count).forEach(sw => stopSw(sw));
+    stopwatches.length = count;
+  }
+}
+
+/**
+ * グリッドのCSS grid-template-columns / rows を設定する
+ */
+function applyGridLayout() {
+  const grid = document.getElementById("sw-grid");
+  const wrap = getWrap();
+  const dir  = getDirection();
+  const size = getSize();
+  const count = stopwatches.length;
+
+  const cellSize = Math.max(size, 160);
+  const gap = Math.max(16, Math.round(size * 0.15));
+  grid.style.gap = gap + "px";
+
+  if (dir === "horizontal") {
+    const cols = Math.min(wrap, count);
+    grid.style.gridTemplateColumns = `repeat(${cols}, ${cellSize}px)`;
+    grid.style.gridTemplateRows = "";
+    grid.style.gridAutoFlow = "row";
+  } else {
+    const rows = Math.min(wrap, count);
+    grid.style.gridTemplateRows = `repeat(${rows}, auto)`;
+    grid.style.gridTemplateColumns = `repeat(auto-fill, ${cellSize}px)`;
+    grid.style.gridAutoFlow = "column";
+  }
+}
+
+/**
+ * DOM上のストップウォッチ要素を再構築する
+ */
+function rebuildDom() {
+  const grid = document.getElementById("sw-grid");
+  const size = getSize();
+  const fontSize = Math.max(10, Math.round(size * 0.16));
+  const statusSize = Math.max(8, Math.round(size * 0.1));
+
+  // 要素数を合わせる
+  while (grid.children.length > stopwatches.length) grid.lastChild.remove();
+  while (grid.children.length < stopwatches.length) {
+    const idx = grid.children.length;
+    const item = document.createElement("div");
+    item.className = "sw-item";
+    item.dataset.index = idx;
+
+    // 上部（名称・色）
+    const top = document.createElement("div");
+    top.className = "sw-top";
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "sw-name";
+    nameInput.addEventListener("change", e => {
+      stopwatches[idx].name = e.target.value;
+    });
+
+    const colorBtn = document.createElement("button");
+    colorBtn.className = "sw-color-btn";
+    colorBtn.title = "色を変更";
+    colorBtn.addEventListener("click", () => colorInput.click());
+    const colorInput = document.createElement("input");
+    colorInput.type = "color";
+    colorInput.tabIndex = -1;
+    colorInput.addEventListener("input", e => {
+      stopwatches[idx].color = e.target.value;
+      updateItemStyle(item, idx, getSize());
+    });
+    colorBtn.appendChild(colorInput);
+
+    top.appendChild(nameInput);
+    top.appendChild(colorBtn);
+
+    // 円
+    const circle = document.createElement("div");
+    circle.className = "sw-circle";
+    circle.addEventListener("click", () => handleSwClick(idx));
+
+    const timeEl = document.createElement("div");
+    timeEl.className = "sw-time";
+
+    const statusEl = document.createElement("div");
+    statusEl.className = "sw-status";
+
+    circle.appendChild(timeEl);
+    circle.appendChild(statusEl);
+
+    item.appendChild(top);
+    item.appendChild(circle);
+    grid.appendChild(item);
+  }
+
+  // 全要素を更新
+  stopwatches.forEach((sw, idx) => {
+    const item = grid.children[idx];
+    const nameInput = item.querySelector(".sw-name");
+    const colorInput = item.querySelector("input[type='color']");
+    nameInput.value = sw.name;
+    colorInput.value = sw.color;
+    updateItemStyle(item, idx, size, fontSize, statusSize);
+  });
+
+  applyGridLayout();
+}
+
+/**
+ * 個別ストップウォッチのスタイルと表示を更新する
+ * @param {HTMLElement} item
+ * @param {number} idx
+ * @param {number} size
+ * @param {number} [fontSize]
+ * @param {number} [statusSize]
+ */
+function updateItemStyle(item, idx, size, fontSize, statusSize) {
+  const sw = stopwatches[idx];
+  if (fontSize === undefined) fontSize = Math.max(10, Math.round(size * 0.16));
+  if (statusSize === undefined) statusSize = Math.max(8, Math.round(size * 0.1));
+
+  const circle   = item.querySelector(".sw-circle");
+  const timeEl   = item.querySelector(".sw-time");
+  const statusEl = item.querySelector(".sw-status");
+  const colorBtn = item.querySelector(".sw-color-btn");
+
+  circle.style.width  = size + "px";
+  circle.style.height = size + "px";
+  circle.style.background = sw.color;
+  circle.classList.toggle("running", sw.running);
+
+  colorBtn.style.background = sw.color;
+
+  timeEl.style.fontSize = fontSize + "px";
+  timeEl.textContent = formatTime(currentElapsed(sw));
+
+  statusEl.style.fontSize = statusSize + "px";
+  statusEl.textContent = sw.running ? "▶ 計測中" : "■ 停止中";
+}
+
+/**
+ * 全ストップウォッチの時間表示のみ更新する（DOM再構築なし）
+ */
+function updateDisplay() {
+  const grid = document.getElementById("sw-grid");
+  const size = getSize();
+  stopwatches.forEach((sw, idx) => {
+    const item = grid.children[idx];
+    if (!item) return;
+    updateItemStyle(item, idx, size);
+  });
+}
+
+/**
+ * setIntervalによる定期更新を開始する
+ */
+function startInterval() {
+  if (intervalId !== null) return;
+  intervalId = setInterval(updateDisplay, 100);
+}
+
+// ===== イベント設定 =====
+
+document.getElementById("input-count").addEventListener("change", e => {
+  const v = clamp(parseInt(e.target.value) || 4, 1, 20);
+  e.target.value = v;
+  resizeStopwatches(v);
+  rebuildDom();
+});
+
+document.getElementById("input-size").addEventListener("change", e => {
+  const v = clamp(parseInt(e.target.value) || 160, 10, 1000);
+  e.target.value = v;
+  rebuildDom();
+});
+document.getElementById("input-size").addEventListener("input", () => applyGridLayout());
+
+document.getElementById("input-wrap").addEventListener("change", e => {
+  const v = clamp(parseInt(e.target.value) || 2, 1, 10);
+  e.target.value = v;
+  applyGridLayout();
+});
+document.getElementById("input-wrap").addEventListener("input", () => applyGridLayout());
+
+document.querySelectorAll('input[name="direction"]').forEach(r => {
+  r.addEventListener("change", () => applyGridLayout());
+});
+
+document.querySelectorAll('input[name="mode"]').forEach(r => {
+  r.addEventListener("change", () => {});
+});
+
+document.getElementById("btn-reset").addEventListener("click", () => {
+  stopwatches.forEach(sw => resetSw(sw));
+  updateDisplay();
+});
+
+// ===== 初期化 =====
+
+resizeStopwatches(4);
+rebuildDom();
+startInterval();
+</script>
+</body>
+</html>
